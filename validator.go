@@ -78,7 +78,7 @@ func lineColumn(data []byte, offset int) (line int, column int) {
 		case '\r':
 			line++
 			column = 1
-			if i+1 < offset && data[i+1] == '\n' {
+			if i+1 < len(data) && data[i+1] == '\n' {
 				i++
 			}
 		case '\n':

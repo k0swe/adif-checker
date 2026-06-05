@@ -7,6 +7,8 @@ import (
 	"unicode"
 )
 
+const maxTagNameLength = 1024
+
 func validateADIF(data []byte) error {
 	for i := 0; i < len(data); {
 		b := data[i]
@@ -56,6 +58,9 @@ func parseTagLength(tag string) (int, error) {
 			return 0, fmt.Errorf("invalid tag name %q", parts[0])
 		}
 	}
+	if len(parts[0]) > maxTagNameLength {
+		return 0, fmt.Errorf("tag name too long")
+	}
 
 	if len(parts) == 1 {
 		return 0, nil
@@ -70,5 +75,5 @@ func parseTagLength(tag string) (int, error) {
 }
 
 func isWhitespaceByte(b byte) bool {
-	return b == ' ' || b == '\n' || b == '\r' || b == '\t'
+	return b == ' ' || b == '\n' || b == '\r' || b == '\t' || b == '\v' || b == '\f'
 }

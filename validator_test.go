@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidateADIF(t *testing.T) {
 	tests := []struct {
@@ -16,6 +19,11 @@ func TestValidateADIF(t *testing.T) {
 		{
 			name:    "valid with type and whitespace",
 			input:   " \n<CALL:3:S>ABC\t<EOR>\n",
+			wantErr: false,
+		},
+		{
+			name:    "valid with additional ascii whitespace",
+			input:   "\v<CALL:3>ABC\f<EOR>\v",
 			wantErr: false,
 		},
 		{
@@ -41,6 +49,11 @@ func TestValidateADIF(t *testing.T) {
 		{
 			name:    "empty tag name",
 			input:   "<:3>ABC",
+			wantErr: true,
+		},
+		{
+			name:    "tag name too long",
+			input:   "<" + strings.Repeat("A", maxTagNameLength+1) + ":1>A",
 			wantErr: true,
 		},
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,7 +11,13 @@ import (
 const maxTagNameLength = 1024
 
 func validateADIF(data []byte) error {
+	_, err := validateADIFWithWarnings(data)
+	return err
+}
+
+func validateADIFWithWarnings(data []byte) ([]string, error) {
 	inHeader := hasADIFHeader(data)
+	var warnings []string
 
 	for i := 0; i < len(data); {
 		b := data[i]
@@ -24,7 +31,7 @@ func validateADIF(data []byte) error {
 				i++
 				continue
 			}
-			return errorAtf(data, i, "stray data byte %q", b)
+			return nil, errorAtf(data, i, "stray data byte %q", b)
 		}
 
 		end := i + 1
@@ -32,19 +39,22 @@ func validateADIF(data []byte) error {
 			end++
 		}
 		if end >= len(data) {
-			return errorAtf(data, i, "unterminated tag")
+			return nil, errorAtf(data, i, "unterminated tag")
 		}
 
 		tagText := string(data[i+1 : end])
-		length, err := parseTagLength(tagText)
+		length, dataType, err := parseTag(tagText)
 		if err != nil {
-			return errorAtf(data, i, "invalid tag: %w", err)
+			return nil, errorAtf(data, i, "invalid tag: %w", err)
 		}
 
 		i = end + 1
 		if length > 0 {
 			if i+length > len(data) {
-				return errorAtf(data, i, "tag data exceeds input")
+				return nil, errorAtf(data, i, "tag data exceeds input")
+			}
+			if strings.EqualFold(dataType, "M") {
+				warnings = append(warnings, multilineLineEndingWarnings(data, i, data[i:i+length])...)
 			}
 			i += length
 		}
@@ -54,7 +64,7 @@ func validateADIF(data []byte) error {
 		}
 	}
 
-	return nil
+	return warnings, nil
 }
 
 func errorAtf(data []byte, offset int, format string, args ...any) error {
@@ -102,42 +112,73 @@ func hasADIFHeader(data []byte) bool {
 	return false
 }
 
-func parseTagLength(tag string) (int, error) {
+func parseTag(tag string) (int, string, error) {
 	parts := strings.Split(tag, ":")
 	if parts[0] == "" {
-		return 0, fmt.Errorf("empty tag name")
+		return 0, "", fmt.Errorf("empty tag name")
 	}
 	if len(parts) > 3 {
-		return 0, fmt.Errorf("too many tag segments")
+		return 0, "", fmt.Errorf("too many tag segments")
 	}
 	if len(parts[0]) > maxTagNameLength {
-		return 0, fmt.Errorf("tag name too long")
+		return 0, "", fmt.Errorf("tag name too long")
 	}
 
 	for _, r := range parts[0] {
 		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_') {
-			return 0, fmt.Errorf("invalid tag name %q", parts[0])
+			return 0, "", fmt.Errorf("invalid tag name %q", parts[0])
 		}
 	}
 
 	if len(parts) == 1 {
-		return 0, nil
+		return 0, "", nil
 	}
 	if parts[1] == "" {
-		return 0, fmt.Errorf("missing run length")
+		return 0, "", fmt.Errorf("missing run length")
 	}
 
 	length, err := strconv.Atoi(parts[1])
 	if err != nil || length < 0 {
-		return 0, fmt.Errorf("invalid run length %q", parts[1])
+		return 0, "", fmt.Errorf("invalid run length %q", parts[1])
 	}
+	dataType := ""
 	if len(parts) == 3 && parts[2] == "" {
-		return 0, fmt.Errorf("empty data type")
+		return 0, "", fmt.Errorf("empty data type")
+	}
+	if len(parts) == 3 {
+		dataType = parts[2]
 	}
 
-	return length, nil
+	return length, dataType, nil
 }
 
 func isWhitespaceByte(b byte) bool {
 	return b == ' ' || b == '\n' || b == '\r' || b == '\t' || b == '\v' || b == '\f'
+}
+
+func multilineLineEndingWarnings(data []byte, fieldStart int, fieldData []byte) []string {
+	if bytes.IndexAny(fieldData, "\r\n") == -1 {
+		return nil
+	}
+
+	var warnings []string
+	for i := 0; i < len(fieldData); i++ {
+		switch fieldData[i] {
+		case '\r':
+			if i+1 < len(fieldData) && fieldData[i+1] == '\n' {
+				i++
+				continue
+			}
+			warnings = append(warnings, warningAtf(data, fieldStart+i, "non-CRLF line ending in multiline field"))
+		case '\n':
+			warnings = append(warnings, warningAtf(data, fieldStart+i, "non-CRLF line ending in multiline field"))
+		}
+	}
+
+	return warnings
+}
+
+func warningAtf(data []byte, offset int, message string) string {
+	line, column := lineColumn(data, offset)
+	return fmt.Sprintf("%s at line %d, column %d", message, line, column)
 }

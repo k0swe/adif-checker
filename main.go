@@ -17,9 +17,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := validateADIF(data); err != nil {
+	warnings, err := validateADIFWithWarnings(data)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "invalid ADIF: %v\n", err)
 		os.Exit(1)
+	}
+	for _, warning := range warnings {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
 	}
 
 	fmt.Println("ADIF is well-formed")

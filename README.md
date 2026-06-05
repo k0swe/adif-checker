@@ -9,6 +9,7 @@
 - Tag data does not run past the end of the file
 - Header content is accepted until `<EOH>`
 - Unexpected bytes outside valid ADIF content are rejected
+- Multiline (`:M`) fields with non-CRLF line endings are warned
 
 ## Usage
 

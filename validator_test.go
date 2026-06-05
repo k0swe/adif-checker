@@ -96,15 +96,15 @@ func TestValidateADIF(t *testing.T) {
 			wantErr: false,
 		},
 		{
-				name:    "tag name too long",
-				input:   "<" + strings.Repeat("A", maxTagNameLength+1) + ":1>A",
-				wantErr: true,
-			},
-		}
+			name:    "tag name too long",
+			input:   "<" + strings.Repeat("A", maxTagNameLength+1) + ":1>A",
+			wantErr: true,
+		},
+	}
 
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				err := validateADIF([]byte(tc.input))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateADIF([]byte(tc.input))
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("validateADIF() error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -134,5 +134,55 @@ func TestLineColumn(t *testing.T) {
 		if line != tc.wantLine || column != tc.wantColumn {
 			t.Fatalf("lineColumn(%d) = (%d, %d), want (%d, %d)", tc.offset, line, column, tc.wantLine, tc.wantColumn)
 		}
+	}
+}
+
+func TestValidateADIFWithWarnings(t *testing.T) {
+	tests := []struct {
+		name               string
+		input              string
+		wantErr            bool
+		wantWarnings       int
+		wantWarningSubstrs []string
+	}{
+		{
+			name:         "multiline field with CRLF has no warning",
+			input:        "<COMMENT:12:M>line1\r\nline2<EOR>",
+			wantWarnings: 0,
+		},
+		{
+			name:               "multiline field with LF warns",
+			input:              "<COMMENT:11:M>line1\nline2<EOR>",
+			wantWarnings:       1,
+			wantWarningSubstrs: []string{"non-CRLF line ending in multiline field"},
+		},
+		{
+			name:               "multiline field with CR warns",
+			input:              "<COMMENT:11:M>line1\rline2<EOR>",
+			wantWarnings:       1,
+			wantWarningSubstrs: []string{"non-CRLF line ending in multiline field"},
+		},
+		{
+			name:         "non multiline field does not warn",
+			input:        "<COMMENT:11:S>line1\nline2<EOR>",
+			wantWarnings: 0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			warnings, err := validateADIFWithWarnings([]byte(tc.input))
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("validateADIFWithWarnings() error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if len(warnings) != tc.wantWarnings {
+				t.Fatalf("validateADIFWithWarnings() warnings = %v, want %d", warnings, tc.wantWarnings)
+			}
+			for i, want := range tc.wantWarningSubstrs {
+				if i >= len(warnings) || !strings.Contains(warnings[i], want) {
+					t.Fatalf("validateADIFWithWarnings() warnings = %v, want substring %q at index %d", warnings, want, i)
+				}
+			}
+		})
 	}
 }

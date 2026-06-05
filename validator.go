@@ -49,8 +49,11 @@ func validateADIF(data []byte) error {
 
 func parseTagLength(tag string) (int, error) {
 	parts := strings.Split(tag, ":")
-	if strings.TrimSpace(parts[0]) == "" {
+	if parts[0] == "" {
 		return 0, fmt.Errorf("empty tag name")
+	}
+	if len(parts) > 3 {
+		return 0, fmt.Errorf("too many tag segments")
 	}
 	if len(parts[0]) > maxTagNameLength {
 		return 0, fmt.Errorf("tag name too long")
@@ -65,10 +68,16 @@ func parseTagLength(tag string) (int, error) {
 	if len(parts) == 1 {
 		return 0, nil
 	}
+	if parts[1] == "" {
+		return 0, fmt.Errorf("missing run length")
+	}
 
 	length, err := strconv.Atoi(parts[1])
 	if err != nil || length < 0 {
 		return 0, fmt.Errorf("invalid run length %q", parts[1])
+	}
+	if len(parts) == 3 && parts[2] == "" {
+		return 0, fmt.Errorf("empty data type")
 	}
 
 	return length, nil

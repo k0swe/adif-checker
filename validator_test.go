@@ -42,6 +42,21 @@ func TestValidateADIF(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "missing run length",
+			input:   "<CALL:>ABC",
+			wantErr: true,
+		},
+		{
+			name:    "empty data type",
+			input:   "<CALL:3:>ABC",
+			wantErr: true,
+		},
+		{
+			name:    "too many tag segments",
+			input:   "<CALL:3:S:EXTRA>ABC",
+			wantErr: true,
+		},
+		{
 			name:    "truncated data",
 			input:   "<CALL:5>ABC",
 			wantErr: true,

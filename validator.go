@@ -10,6 +10,8 @@ import (
 const maxTagNameLength = 1024
 
 func validateADIF(data []byte) error {
+	inHeader := hasADIFHeader(data)
+
 	for i := 0; i < len(data); {
 		b := data[i]
 		if isWhitespaceByte(b) {
@@ -18,6 +20,10 @@ func validateADIF(data []byte) error {
 		}
 
 		if b != '<' {
+			if inHeader {
+				i++
+				continue
+			}
 			return fmt.Errorf("stray data byte %q at offset %d", b, i)
 		}
 
@@ -42,9 +48,23 @@ func validateADIF(data []byte) error {
 			}
 			i += length
 		}
+
+		if inHeader && strings.EqualFold(tagText, "EOH") {
+			inHeader = false
+		}
 	}
 
 	return nil
+}
+
+func hasADIFHeader(data []byte) bool {
+	for _, b := range data {
+		if isWhitespaceByte(b) {
+			continue
+		}
+		return b != '<'
+	}
+	return false
 }
 
 func parseTagLength(tag string) (int, error) {

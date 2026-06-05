@@ -108,8 +108,8 @@ func TestValidateADIF(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("validateADIF() error = %v, wantErr %v", err, tc.wantErr)
 			}
-			if tc.wantErrContains != "" && !strings.Contains(err.Error(), tc.wantErrContains) {
-				t.Fatalf("validateADIF() error = %q, want substring %q", err.Error(), tc.wantErrContains)
+			if tc.wantErrContains != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErrContains)) {
+				t.Fatalf("validateADIF() error = %v, want substring %q", err, tc.wantErrContains)
 			}
 		})
 	}

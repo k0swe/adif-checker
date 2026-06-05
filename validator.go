@@ -171,9 +171,6 @@ func multilineLineEndingWarnings(data []byte, fieldStart int, fieldData []byte) 
 			}
 			warnings = append(warnings, warningAtf(data, fieldStart+i, "non-CRLF line ending in multiline field"))
 		case '\n':
-			if i > 0 && fieldData[i-1] == '\r' {
-				continue
-			}
 			warnings = append(warnings, warningAtf(data, fieldStart+i, "non-CRLF line ending in multiline field"))
 		}
 	}

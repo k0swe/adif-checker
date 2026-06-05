@@ -7,9 +7,10 @@ import (
 
 func TestValidateADIF(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   string
-		wantErr bool
+		name            string
+		input           string
+		wantErr         bool
+		wantErrContains string
 	}{
 		{
 			name:    "valid field and eor",
@@ -40,24 +41,28 @@ func TestValidateADIF(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "stray byte after data",
-			input:   "<CALL:3>ABCx<EOR>",
-			wantErr: true,
+			name:            "stray byte after data",
+			input:           "<CALL:3>ABCx<EOR>",
+			wantErr:         true,
+			wantErrContains: "line 1, column 12",
 		},
 		{
-			name:    "stray text after eoh is invalid",
-			input:   "Header text<EOH>oops<CALL:5>K0SWE<EOR>",
-			wantErr: true,
+			name:            "stray text after eoh is invalid",
+			input:           "Header text<EOH>\noops<CALL:5>K0SWE<EOR>",
+			wantErr:         true,
+			wantErrContains: "line 2, column 1",
 		},
 		{
-			name:    "unterminated tag",
-			input:   "<CALL:3>ABC<EOR",
-			wantErr: true,
+			name:            "unterminated tag",
+			input:           "<CALL:3>ABC<EOR",
+			wantErr:         true,
+			wantErrContains: "line 1, column 12",
 		},
 		{
-			name:    "invalid run length",
-			input:   "<CALL:xx>ABC",
-			wantErr: true,
+			name:            "invalid run length",
+			input:           "\r\n<CALL:xx>ABC",
+			wantErr:         true,
+			wantErrContains: "line 2, column 1",
 		},
 		{
 			name:    "missing run length",
@@ -75,9 +80,10 @@ func TestValidateADIF(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "truncated data",
-			input:   "<CALL:5>ABC",
-			wantErr: true,
+			name:            "truncated data",
+			input:           "<CALL:5>ABC",
+			wantErr:         true,
+			wantErrContains: "line 1, column 9",
 		},
 		{
 			name:    "empty tag name",
@@ -90,18 +96,43 @@ func TestValidateADIF(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "tag name too long",
-			input:   "<" + strings.Repeat("A", maxTagNameLength+1) + ":1>A",
-			wantErr: true,
-		},
-	}
+				name:    "tag name too long",
+				input:   "<" + strings.Repeat("A", maxTagNameLength+1) + ":1>A",
+				wantErr: true,
+			},
+		}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			err := validateADIF([]byte(tc.input))
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				err := validateADIF([]byte(tc.input))
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("validateADIF() error = %v, wantErr %v", err, tc.wantErr)
 			}
+			if tc.wantErrContains != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErrContains)) {
+				t.Fatalf("validateADIF() error = %v, want substring %q", err, tc.wantErrContains)
+			}
 		})
+	}
+}
+
+func TestLineColumn(t *testing.T) {
+	data := []byte("A\r\nB\nC")
+	tests := []struct {
+		offset     int
+		wantLine   int
+		wantColumn int
+	}{
+		{offset: 0, wantLine: 1, wantColumn: 1},
+		{offset: 1, wantLine: 1, wantColumn: 2},
+		{offset: 2, wantLine: 2, wantColumn: 1},
+		{offset: 3, wantLine: 2, wantColumn: 1},
+		{offset: 5, wantLine: 3, wantColumn: 1},
+	}
+
+	for _, tc := range tests {
+		line, column := lineColumn(data, tc.offset)
+		if line != tc.wantLine || column != tc.wantColumn {
+			t.Fatalf("lineColumn(%d) = (%d, %d), want (%d, %d)", tc.offset, line, column, tc.wantLine, tc.wantColumn)
+		}
 	}
 }

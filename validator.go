@@ -24,7 +24,7 @@ func validateADIF(data []byte) error {
 				i++
 				continue
 			}
-			return fmt.Errorf("stray data byte %q at offset %d", b, i)
+			return errorAtf(data, i, "stray data byte %q", b)
 		}
 
 		end := i + 1
@@ -32,19 +32,19 @@ func validateADIF(data []byte) error {
 			end++
 		}
 		if end >= len(data) {
-			return fmt.Errorf("unterminated tag at offset %d", i)
+			return errorAtf(data, i, "unterminated tag")
 		}
 
 		tagText := string(data[i+1 : end])
 		length, err := parseTagLength(tagText)
 		if err != nil {
-			return fmt.Errorf("invalid tag at offset %d: %w", i, err)
+			return errorAtf(data, i, "invalid tag: %w", err)
 		}
 
 		i = end + 1
 		if length > 0 {
 			if i+length > len(data) {
-				return fmt.Errorf("tag data exceeds input at offset %d", i)
+				return errorAtf(data, i, "tag data exceeds input")
 			}
 			i += length
 		}
@@ -55,6 +55,41 @@ func validateADIF(data []byte) error {
 	}
 
 	return nil
+}
+
+func errorAtf(data []byte, offset int, format string, args ...any) error {
+	line, column := lineColumn(data, offset)
+	positionedFormat := fmt.Sprintf("%s at line %d, column %d", format, line, column)
+	return fmt.Errorf(positionedFormat, args...)
+}
+
+func lineColumn(data []byte, offset int) (line int, column int) {
+	line = 1
+	column = 1
+	if offset <= 0 {
+		return line, column
+	}
+	if offset > len(data) {
+		offset = len(data)
+	}
+
+	for i := 0; i < offset; i++ {
+		switch data[i] {
+		case '\r':
+			line++
+			column = 1
+			if i+1 < len(data) && data[i+1] == '\n' {
+				i++
+			}
+		case '\n':
+			line++
+			column = 1
+		default:
+			column++
+		}
+	}
+
+	return line, column
 }
 
 func hasADIFHeader(data []byte) bool {

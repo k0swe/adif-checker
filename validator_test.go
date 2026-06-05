@@ -102,6 +102,28 @@ func TestValidateADIF(t *testing.T) {
 		},
 	}
 
+	func TestLineColumn(t *testing.T) {
+		data := []byte("A\r\nB\nC")
+		tests := []struct {
+			offset     int
+			wantLine   int
+			wantColumn int
+		}{
+			{offset: 0, wantLine: 1, wantColumn: 1},
+			{offset: 1, wantLine: 1, wantColumn: 2},
+			{offset: 2, wantLine: 2, wantColumn: 1},
+			{offset: 3, wantLine: 2, wantColumn: 1},
+			{offset: 5, wantLine: 3, wantColumn: 1},
+		}
+
+		for _, tc := range tests {
+			line, column := lineColumn(data, tc.offset)
+			if line != tc.wantLine || column != tc.wantColumn {
+				t.Fatalf("lineColumn(%d) = (%d, %d), want (%d, %d)", tc.offset, line, column, tc.wantLine, tc.wantColumn)
+			}
+		}
+	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateADIF([]byte(tc.input))

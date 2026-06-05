@@ -52,6 +52,11 @@ func TestValidateADIF(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "tag name at max length",
+			input:   "<" + strings.Repeat("A", maxTagNameLength) + ":1>A",
+			wantErr: false,
+		},
+		{
 			name:    "tag name too long",
 			input:   "<" + strings.Repeat("A", maxTagNameLength+1) + ":1>A",
 			wantErr: true,

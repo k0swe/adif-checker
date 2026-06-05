@@ -49,17 +49,17 @@ func validateADIF(data []byte) error {
 
 func parseTagLength(tag string) (int, error) {
 	parts := strings.Split(tag, ":")
-	if len(parts) == 0 || strings.TrimSpace(parts[0]) == "" {
+	if strings.TrimSpace(parts[0]) == "" {
 		return 0, fmt.Errorf("empty tag name")
+	}
+	if len(parts[0]) > maxTagNameLength {
+		return 0, fmt.Errorf("tag name too long")
 	}
 
 	for _, r := range parts[0] {
 		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_') {
 			return 0, fmt.Errorf("invalid tag name %q", parts[0])
 		}
-	}
-	if len(parts[0]) > maxTagNameLength {
-		return 0, fmt.Errorf("tag name too long")
 	}
 
 	if len(parts) == 1 {

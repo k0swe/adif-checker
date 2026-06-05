@@ -1,0 +1,6 @@
+# Executables
+adif-checker
+adif-checker.exe
+
+# Test data
+*.adi

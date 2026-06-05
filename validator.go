@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
@@ -156,6 +157,10 @@ func isWhitespaceByte(b byte) bool {
 }
 
 func multilineLineEndingWarnings(data []byte, fieldStart int, fieldData []byte) []string {
+	if bytes.IndexAny(fieldData, "\r\n") == -1 {
+		return nil
+	}
+
 	var warnings []string
 	for i := 0; i < len(fieldData); i++ {
 		switch fieldData[i] {

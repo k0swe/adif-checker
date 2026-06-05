@@ -59,7 +59,10 @@ func validateADIF(data []byte) error {
 
 func errorAtf(data []byte, offset int, format string, args ...any) error {
 	line, column := lineColumn(data, offset)
-	allArgs := append(append([]any{}, args...), line, column)
+	allArgs := make([]any, len(args)+2)
+	copy(allArgs, args)
+	allArgs[len(args)] = line
+	allArgs[len(args)+1] = column
 	return fmt.Errorf(format+" at line %d, column %d", allArgs...)
 }
 
@@ -73,19 +76,23 @@ func lineColumn(data []byte, offset int) (line int, column int) {
 		offset = len(data)
 	}
 
-	for i := 0; i < offset; i++ {
+	for i := 0; i < offset; {
 		switch data[i] {
 		case '\r':
 			line++
 			column = 1
 			if i+1 < offset && data[i+1] == '\n' {
-				i++
+				i += 2
+				continue
 			}
+			i++
 		case '\n':
 			line++
 			column = 1
+			i++
 		default:
 			column++
+			i++
 		}
 	}
 

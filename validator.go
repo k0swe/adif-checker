@@ -111,11 +111,6 @@ func hasADIFHeader(data []byte) bool {
 	return false
 }
 
-func parseTagLength(tag string) (int, error) {
-	length, _, err := parseTag(tag)
-	return length, err
-}
-
 func parseTag(tag string) (int, string, error) {
 	parts := strings.Split(tag, ":")
 	if parts[0] == "" {

@@ -27,8 +27,26 @@ func TestValidateADIF(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "valid header with free text and header tags",
+			input: "QRZLogbook download for k0swe\n" +
+				"    Date: Fri Jun  5 22:39:53 2026\n" +
+				"    Bookid: 230915\n" +
+				"    Records: 1417\n" +
+				"    <ADIF_VER:5>3.1.1\n" +
+				"    <PROGRAMID:10>QRZLogbook\n" +
+				"    <PROGRAMVERSION:3>2.0\n" +
+				"    <eoh>\n" +
+				"<CALL:5>K0SWE<EOR>",
+			wantErr: false,
+		},
+		{
 			name:    "stray byte after data",
 			input:   "<CALL:3>ABCx<EOR>",
+			wantErr: true,
+		},
+		{
+			name:    "stray text after eoh is invalid",
+			input:   "Header text<EOH>oops<CALL:5>K0SWE<EOR>",
 			wantErr: true,
 		},
 		{
